@@ -4,12 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+tensorflow = "*"
 pandas = "*"
 neovim = "*"
 "flake8" = "*"
-numpy = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.7"
+python_version = "3.6"
