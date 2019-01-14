@@ -13,6 +13,7 @@ class FeedForwardLayer:
 
 
 CostFunction = Callable[[tf.Tensor, tf.Tensor], tf.Tensor]
+
 ActivationFunction = Callable[[tf.Tensor, str], tf.Tensor]
 
 
@@ -32,6 +33,8 @@ class FeedForwardNetwork:
         self.layers: List[FeedForwardLayer] = \
             [None for _ in range(self.layer_number)]
 
+        print('Initializing parameters...')
+
         for i in range(self.layer_number):
             prev_shape = self.layer_shapes[i]
             curr_shape = self.layer_shapes[i + 1]
@@ -41,6 +44,7 @@ class FeedForwardNetwork:
 
             self.layers[i] = FeedForwardLayer(weights, biases)
 
+        print('Parameters initialized.')
         self.is_initialized = True
 
     def model(self, x: tf.Variable) -> tf.Variable:
@@ -62,8 +66,11 @@ class FeedForwardNetwork:
               epochs: int,
               batch_size: int,
               activation_function: ActivationFunction,
+              cost_function: CostFunction,
               optimizer_function: tf.train.Optimizer,
               ) -> None:
+
+        assert x_data.shape[0] == y_data.shape[0] == example_number
 
         x_dataset = tf.data.Dataset.from_tensor_slices(x_data)
         y_dataset = tf.data.Dataset.from_tensor_slices(y_data)
@@ -81,11 +88,11 @@ class FeedForwardNetwork:
             tf.placeholder('float', shape=(batch_size, self.x_size)),
             tf.placeholder('float', shape=(batch_size, self.y_size)))
 
-        pred_y = tf.map_fn(self.model, x_batch)
-        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
-            labels=y_batch, logits=pred_y))
+        pred_y_batch = tf.map_fn(self.model, x_batch)
+        cost = tf.reduce_mean(cost_function(pred_y_batch, y_batch))
         optimizer = optimizer_function.minimize(cost)
 
+        print('Training...')
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for epoch in range(epochs):
@@ -116,6 +123,7 @@ class FeedForwardNetwork:
                       y_data: tf.Tensor,
                       example_number: int
                       ):
+        print('Testing accuracy...')
         pred_y = tf.map_fn(self.model, x_data)
         correct = tf.equal(tf.argmax(pred_y, 1), tf.argmax(y_data, 1))
         accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
@@ -133,5 +141,9 @@ net.train(
     mnist.train.num_examples,
     10, 100,
     tf.nn.relu,
+    lambda pred_y, y: tf.nn.softmax_cross_entropy_with_logits_v2(
+        logits = pred_y,
+        labels = y
+    ),
     tf.train.AdamOptimizer(learning_rate=0.001)
 )
