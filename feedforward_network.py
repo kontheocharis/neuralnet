@@ -19,7 +19,6 @@ ActivationFunction = Callable[[tf.Tensor, str], tf.Tensor]
 
 class FeedForwardNetwork:
     is_initialized: bool = False
-
     def __init__(self, layer_shapes: List[int]) -> None:
         # Note: layer_shapes includes x layer
         self.layer_shapes = layer_shapes
@@ -132,7 +131,7 @@ class FeedForwardNetwork:
 
 mnist = input_data.read_data_sets("/tmp/data", one_hot=True)
 
-net = FeedForwardNetwork([784, 3, 3, 10])
+net = FeedForwardNetwork([784, 500, 500, 500, 10])
 
 net.init_parameters()
 net.train(
