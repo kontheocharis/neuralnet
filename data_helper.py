@@ -3,6 +3,7 @@ import tensorflow as tf
 # from typing import List
 # import numpy as np
 import os
+import math
 import random
 
 _dirname = os.path.dirname(__file__)
@@ -18,12 +19,14 @@ class DataHelper:
         self._training_filenames = {c: [] for c in self.categories}
         self._train_size = train_size
         self._test_size = test_size
+        self._train_category_sizes = self._get_size_per_category(train_size)
+        self._test_category_sizes = self._get_size_per_category(test_size)
 
     def get_dataset(self, training=False):
         dataset_list = [[], []]
-        size = self._train_size if training else self._test_size
         for c in self.categories:
             index_c = self.categories.index(c)
+            size = self._train_category_sizes[index_c] if training else self._test_category_sizes[index_c]
             category_dir = os.path.join(_dirname, 'data', c)
             image_filenames = []
             if training:
@@ -60,6 +63,18 @@ class DataHelper:
     def _create_category_list(self, length, category):
         return [1.0 if i == category else 0 for i in range(length)]
 
+    def _get_size_per_category(self, size):
+        num_per_category = math.floor(size / len(self.categories))
+        sizes = []
+        while True:
+            if sum(sizes) == size:
+                break
+            elif sum(sizes) + num_per_category > size:
+                sizes.append(size - sum(sizes))
+                break
+            else:
+                sizes.append(num_per_category)
+        return sizes
 
 def test():
     h = DataHelper()
