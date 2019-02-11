@@ -45,4 +45,4 @@ print('Model compiled.')
 print('Starting training for', epochs, 'epochs...')
 
 # Fitting
-model.fit(train_dataset.batch(1), epochs=epochs, steps_per_epoch=steps_per_epoch)
+model.fit(train_dataset.shuffle(100000).batch(1), epochs=epochs, steps_per_epoch=steps_per_epoch)

@@ -1,7 +1,7 @@
-# from glob import glob
+import cProfile
+import pstats
+from io import StringIO
 import tensorflow as tf
-# from typing import List
-# import numpy as np
 import os
 import math
 import random
@@ -24,9 +24,9 @@ class DataHelper:
 
     def get_dataset(self, training=False):
         dataset_list = [[], []]
-        for c in self.categories:
-            index_c = self.categories.index(c)
-            size = self._train_category_sizes[index_c] if training else self._test_category_sizes[index_c]
+        for (index_c, c) in enumerate(self.categories):
+            size = self._train_category_sizes[index_c] if \
+                training else self._test_category_sizes[index_c]
             category_dir = os.path.join(_dirname, 'data', c)
             image_filenames = []
             if training:
@@ -49,6 +49,7 @@ class DataHelper:
                 dataset_list[1].append(self._decode(image))
                 if training:
                     self._training_filenames[c].append(image)
+        print('done')
         return tf.data.Dataset.from_tensor_slices((
             dataset_list[1], dataset_list[0]))
 
@@ -64,19 +65,24 @@ class DataHelper:
         return [1.0 if i == category else 0 for i in range(length)]
 
     def _get_size_per_category(self, size):
-        num_per_category = math.floor(size / len(self.categories))
+        num_per_category = math.ceil(size / len(self.categories))
         sizes = []
         while True:
-            if sum(sizes) == size:
+            sm = sum(sizes)
+            if sm == size:
                 break
-            elif sum(sizes) + num_per_category > size:
-                sizes.append(size - sum(sizes))
+            elif sm + num_per_category > size:
+                sizes.append(size - sm)
                 break
             else:
                 sizes.append(num_per_category)
         return sizes
 
+
 def test():
+    pr = cProfile.Profile()
+    pr.enable()  # start profiling
+
     h = DataHelper()
     dataset = h.get_dataset(training=True)
     it = dataset.make_one_shot_iterator()
@@ -86,6 +92,12 @@ def test():
             items.append(it.get_next())
         print(sess.run(items))
 
+    pr.disable()  # end profiling
+    s = StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
 
 # test()
 
