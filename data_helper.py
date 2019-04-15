@@ -1,6 +1,7 @@
 import tensorflow as tf
 import os
 import random
+import itertools
 from glob import glob
 
 _dirname = os.path.dirname(__file__)
@@ -19,18 +20,25 @@ class DataHelper:
         self.filenames = list(random.sample(all_filenames, self.size))
 
     def get_dataset(self):
-        dataset_list = [[], []]
-        for i in self.filenames:
-            category = i.split('/')[1]
-            category_index = self.categories.index(category)
-            dataset_list[0].append(
-                    self._create_category_list(
-                        len(self.categories), category_index))
+        gen = self._apply_to_each_elem()
+        return tf.data.Dataset.from_tensors(0).repeat() \
+            .map(lambda _: next(gen)) \
 
-            dataset_list[1].append(self._decode(i))
-        print('Done collecting data')
-        return tf.data.Dataset.from_tensor_slices((
-            dataset_list[1], dataset_list[0]))
+        # return tf.data.Dataset.from_generator(
+        #     self._apply_to_each_elem,
+        #     (tf.float32, tf.float32),
+        #     (tf.TensorShape([self.image_dim * self.image_dim * 3]),
+        #      tf.TensorShape([len(self.categories)]))
+        # ).take(len(self.filenames))
+
+    def _apply_to_each_elem(self):
+        for i in itertools.count(0):
+            filename = self.filenames[i]
+            category = filename.split('/')[1]
+            category_index = self.categories.index(category)
+            yield (self._decode(filename),
+                   self._create_category_list(len(self.categories),
+                                              category_index))
 
     def _decode(self, x):
         img = tf.image.decode_jpeg(tf.read_file(x))
