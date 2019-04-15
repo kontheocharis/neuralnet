@@ -1,55 +1,34 @@
-import cProfile
-import pstats
-from io import StringIO
 import tensorflow as tf
 import os
-import math
 import random
+from glob import glob
 
 _dirname = os.path.dirname(__file__)
 
 
 class DataHelper:
-    image_dim = 256
-    categories = os.listdir(os.path.join(_dirname, 'data'))
+    categories = os.listdir('data')
 
-    def __init__(self, train_size=1000, test_size=4000, categories=None):
-        if categories:
-            self.categories = categories
-        self._training_filenames = {c: [] for c in self.categories}
-        self._train_size = train_size
-        self._test_size = test_size
-        self._train_category_sizes = self._get_size_per_category(train_size)
-        self._test_category_sizes = self._get_size_per_category(test_size)
+    def __init__(self, size=None, image_dim=256):
+        self.image_dim = image_dim
+        all_filenames = glob('data/**/*.jpg')
+        if size:
+            self.size = size
+        else:
+            self.size = len(all_filenames)
+        self.filenames = list(random.sample(all_filenames, self.size))
 
-    def get_dataset(self, training=False):
+    def get_dataset(self):
         dataset_list = [[], []]
-        for (index_c, c) in enumerate(self.categories):
-            size = self._train_category_sizes[index_c] if \
-                training else self._test_category_sizes[index_c]
-            category_dir = os.path.join(_dirname, 'data', c)
-            image_filenames = []
-            if training:
-                image_filenames = random.sample(
-                        os.listdir(category_dir), size)
-            else:
-                image_filenames = random.sample(
-                        [x for x in os.listdir(category_dir)
-                            if x not in self._training_filenames[c]],
-                        size)
-            if training:
-                self._training_filenames[c] = []
-            for i in image_filenames:
-                image = os.path.join(_dirname, 'data', c, i)
+        for i in self.filenames:
+            category = i.split('/')[1]
+            category_index = self.categories.index(category)
+            dataset_list[0].append(
+                    self._create_category_list(
+                        len(self.categories), category_index))
 
-                dataset_list[0].append(
-                        self._create_category_list(
-                            len(self.categories), index_c))
-
-                dataset_list[1].append(self._decode(image))
-                if training:
-                    self._training_filenames[c].append(image)
-        print('done')
+            dataset_list[1].append(self._decode(i))
+        print('Done collecting data')
         return tf.data.Dataset.from_tensor_slices((
             dataset_list[1], dataset_list[0]))
 
@@ -62,42 +41,18 @@ class DataHelper:
                 tf.constant(255.0, dtype='float32'))
 
     def _create_category_list(self, length, category):
-        return [1.0 if i == category else 0 for i in range(length)]
-
-    def _get_size_per_category(self, size):
-        num_per_category = math.ceil(size / len(self.categories))
-        sizes = []
-        while True:
-            sm = sum(sizes)
-            if sm == size:
-                break
-            elif sm + num_per_category > size:
-                sizes.append(size - sm)
-                break
-            else:
-                sizes.append(num_per_category)
-        return sizes
+        return [1.0 if i == category else 0.0 for i in range(length)]
 
 
 def test():
-    pr = cProfile.Profile()
-    pr.enable()  # start profiling
-
     h = DataHelper()
-    dataset = h.get_dataset(training=True)
+    dataset = h.get_dataset()
     it = dataset.make_one_shot_iterator()
     with tf.Session() as sess:
         items = []
         for i in range(5):
             items.append(it.get_next())
         print(sess.run(items))
-
-    pr.disable()  # end profiling
-    s = StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
 
 # test()
 

@@ -4,11 +4,15 @@ from data_helper import DataHelper
 tf.reset_default_graph()
 
 # Data
-train_size = 100
-test_size = 1000
 image_dim = 256
-helper = DataHelper(train_size, test_size)
-train_dataset = helper.get_dataset(training=True)
+helper = DataHelper(image_dim=256)
+
+total_size = helper.size
+test_size = 400
+train_size = total_size - test_size
+
+dataset = helper.get_dataset()
+train_dataset = dataset.take(train_size)
 
 # Variables
 layer_shapes = [500, 500, 500, len(helper.categories)]
@@ -46,7 +50,7 @@ print('Starting training for', epochs, 'epochs...')
 
 # Fitting
 model.fit(
-    train_dataset.shuffle(100000).batch(1),
+    train_dataset.batch(1),
     epochs=epochs,
     steps_per_epoch=steps_per_epoch
 )
