@@ -8,33 +8,41 @@ image_dim = 256
 helper = DataHelper(image_dim=256)
 
 total_size = helper.size
-test_size = 400
-train_size = total_size - test_size
+# test_size = 400
+# train_size = total_size - test_size
 
 dataset = helper.get_dataset()
-train_dataset = dataset.take(train_size)
+
+print(dataset.output_shapes)
+print(dataset.output_types)
+
+# it = dataset.batch(1).make_one_shot_iterator()
+# with tf.Session() as sess:
+#     items = []
+#     for i in range(10):
+#         items.append(it.get_next())
+#     print(sess.run(items))    
 
 # Variables
-layer_shapes = [500, 500, 500, len(helper.categories)]
 activation = tf.nn.leaky_relu
-learning_rate = 1
-optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+learning_rate = 0.001
+optimizer = tf.train.AdamOptimizer(learning_rate)
 metrics = ['categorical_accuracy']
 epochs = 10
-steps_per_epoch = 10
+steps_per_epoch = 30
 loss = 'mse'
 
 
 # Initialization
 model = tf.keras.Sequential()
-
-model.add(tf.keras.layers.Flatten(input_shape=[image_dim*image_dim*3]))
-
-for i in range(len(layer_shapes)):
-    model.add(tf.keras.layers.Dense(
-        layer_shapes[i],
-        activation=activation
-    ))
+model.add(tf.keras.layers.Conv2D(32, kernel_size=(3, 3),activation='relu', input_shape=(image_dim**2*3,)))
+model.add(tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu'))
+model.add(tf.keras.layers.MaxPooling2D(pool_size=(2, 2)))
+model.add(tf.keras.layers.Dropout(0.25))
+model.add(tf.keras.layers.Flatten())
+model.add(tf.keras.layers.Dense(128, activation='relu'))
+model.add(tf.keras.layers.Dropout(0.5))
+model.add(tf.keras.layers.Dense(len(helper.categories), activation='softmax'))
 
 # Compiling
 print('Compiling model...')
@@ -50,7 +58,7 @@ print('Starting training for', epochs, 'epochs...')
 
 # Fitting
 model.fit(
-    train_dataset.batch(1),
+    dataset.batch(100),
     epochs=epochs,
     steps_per_epoch=steps_per_epoch
 )

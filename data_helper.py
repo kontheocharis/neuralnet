@@ -3,6 +3,7 @@ import os
 import random
 import itertools
 from glob import glob
+import numpy as np
 
 _dirname = os.path.dirname(__file__)
 
@@ -10,35 +11,35 @@ _dirname = os.path.dirname(__file__)
 class DataHelper:
     categories = os.listdir('data')
 
-    def __init__(self, size=None, image_dim=256):
+    def __init__(self, size=-1, image_dim=256):
         self.image_dim = image_dim
-        all_filenames = glob('data/**/*.jpg')
-        if size:
-            self.size = size
-        else:
-            self.size = len(all_filenames)
-        self.filenames = list(random.sample(all_filenames, self.size))
+        # all_filenames = glob('data/**/*.jpg')
+        self.size = size
+        # self.filenames = np.array(random.sample(all_filenames, self.size))
 
     def get_dataset(self):
-        gen = self._apply_to_each_elem()
-        return tf.data.Dataset.from_tensors(0).repeat() \
-            .map(lambda _: next(gen)) \
+        # filename_categories = np.array([x.split('/')[1] for x in self.filenames])
+        # filename_category_indices = np.array([tf.one_hot(self.categories.index(x), len(self.categories)) for x in filename_categories])
 
-        # return tf.data.Dataset.from_generator(
-        #     self._apply_to_each_elem,
-        #     (tf.float32, tf.float32),
-        #     (tf.TensorShape([self.image_dim * self.image_dim * 3]),
-        #      tf.TensorShape([len(self.categories)]))
-        # ).take(len(self.filenames))
+        # return tf.data.Dataset.from_tensor_slices(
+        #         (self.filenames, filename_categories, filename_category_indices)
+        #         ) \
+        #         .map(self._apply_to_each_elem) \
 
-    def _apply_to_each_elem(self):
-        for i in itertools.count(0):
-            filename = self.filenames[i]
-            category = filename.split('/')[1]
-            category_index = self.categories.index(category)
-            yield (self._decode(filename),
-                   self._create_category_list(len(self.categories),
-                                              category_index))
+        return tf.data.Dataset.list_files('data/**/*.jpg').take(self.size).map(self._apply_to_each_elem)
+
+    def _apply_to_each_elem(self, filename):
+        return (self._decode(filename), self._get_category(filename))
+
+    def _get_category(self, filename):
+        onehot = tf.one_hot(*tf.contrib.eager.py_func(
+                func=lambda x: (self.categories.index(str(x).split('/')[1]),
+                    len(self.categories)),
+                inp=[filename],
+                Tout=(tf.int32, tf.int32)
+                ))
+        onehot.set_shape((len(self.categories),))
+        return onehot
 
     def _decode(self, x):
         img = tf.image.decode_jpeg(tf.read_file(x))
@@ -48,19 +49,12 @@ class DataHelper:
                 reshaped,
                 tf.constant(255.0, dtype='float32'))
 
-    def _create_category_list(self, length, category):
-        return [1.0 if i == category else 0.0 for i in range(length)]
-
-
 def test():
     h = DataHelper()
     dataset = h.get_dataset()
     it = dataset.make_one_shot_iterator()
     with tf.Session() as sess:
-        items = []
-        for i in range(5):
-            items.append(it.get_next())
-        print(sess.run(items))
+        print(sess.run(it.get_next()))
 
 # test()
 
