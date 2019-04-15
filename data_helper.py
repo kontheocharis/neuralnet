@@ -11,10 +11,11 @@ _dirname = os.path.dirname(__file__)
 class DataHelper:
     categories = os.listdir('data')
 
-    def __init__(self, size=-1, image_dim=256):
+    def __init__(self, size=-1, image_dim=256, category_glob='*'):
         self.image_dim = image_dim
         # all_filenames = glob('data/**/*.jpg')
         self.size = size
+        self.category_glob = category_glob
         # self.filenames = np.array(random.sample(all_filenames, self.size))
 
     def get_dataset(self):
@@ -26,10 +27,10 @@ class DataHelper:
         #         ) \
         #         .map(self._apply_to_each_elem) \
 
-        return tf.data.Dataset.list_files('data/**/*.jpg').take(self.size).map(self._apply_to_each_elem)
+        return tf.data.Dataset.list_files('data/' + self.category_glob + '/*.jpg').take(self.size).map(self._apply_to_each_elem)
 
     def _apply_to_each_elem(self, filename):
-        return (self._decode(filename), self._get_category(filename))
+        return (self._decode(filename), self._get_category(filename),filename)
 
     def _get_category(self, filename):
         onehot = tf.one_hot(*tf.contrib.eager.py_func(
@@ -44,9 +45,9 @@ class DataHelper:
     def _decode(self, x):
         img = tf.image.decode_jpeg(tf.read_file(x))
         img.set_shape([self.image_dim, self.image_dim, 3])
-        reshaped = tf.reshape(tf.to_float(img), [-1])
+        into_float = tf.to_float(img)
         return tf.math.divide(
-                reshaped,
+                into_float,
                 tf.constant(255.0, dtype='float32'))
 
 def test():
