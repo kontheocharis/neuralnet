@@ -4,16 +4,14 @@ from tensorflow import keras
 tf.reset_default_graph()
 
 fashion_mnist = keras.datasets.fashion_mnist
-(train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+(train_images, train_labels), (test_images, test_labels) = \
+    fashion_mnist.load_data()
 
 train_images = train_images / 255.0
 test_images = test_images / 255.0
 
 train_labels = tf.one_hot(train_labels, 10)
 test_labels = tf.one_hot(test_labels, 10)
-
-# class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 
-               # 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 
 model = keras.Sequential([
     keras.layers.Reshape((28, 28, 1), input_shape=(28, 28)),
